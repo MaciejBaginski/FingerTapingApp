@@ -1,4 +1,4 @@
-package com.example.fingertapingapp
+package com.example.fingertapingapp.helper
 
 import android.content.Context
 import android.widget.Toast

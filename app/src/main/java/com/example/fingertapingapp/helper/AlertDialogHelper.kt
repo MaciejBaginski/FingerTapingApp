@@ -1,7 +1,8 @@
-package com.example.fingertapingapp
+package com.example.fingertapingapp.helper
 
 import android.app.AlertDialog
 import android.content.Context
+import com.example.fingertapingapp.validator.ValidationException
 
 class AlertDialogHelper {
     companion object {

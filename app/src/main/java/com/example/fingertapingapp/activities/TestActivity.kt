@@ -1,18 +1,23 @@
 package com.example.fingertapingapp.activities
 
 import android.content.Intent
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.util.Log
 import android.widget.Button
 import android.widget.ProgressBar
-import com.example.fingertapingapp.AlertDialogHelper
+import androidx.appcompat.app.AppCompatActivity
 import com.example.fingertapingapp.R
-import com.example.fingertapingapp.ToastHelper
 import com.example.fingertapingapp.entities.Attempt
+import com.example.fingertapingapp.entities.User
+import com.example.fingertapingapp.helper.AlertDialogHelper
+import com.example.fingertapingapp.helper.ToastHelper
+import com.example.fingertapingapp.sqlliteutil.DatabaseFactory
+import com.example.fingertapingapp.sqlliteutil.dao.AttemptDAO
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import java.time.LocalDateTime
-import java.time.ZoneId
 import java.util.*
 
 class TestActivity : AppCompatActivity() {
@@ -23,27 +28,34 @@ class TestActivity : AppCompatActivity() {
             "and you will be redirected to results screen.\n\n" +
             "You can cancel the test anytime before it ends by pressing arrow in left top corner of screen."
 
-    private val testDurationInMillis = 5000L
-    var clickCounter = 0;
-    var isTestStarted = false;
-    var timer = 0;
+    private val testDurationInMillis = 30000L
+    private var clickCounter = 0
+    private var isTestStarted = false
 
+    private lateinit var user: User
+    private lateinit var attemptDao: AttemptDAO
     private lateinit var progressBar: ProgressBar
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_test)
-        setSupportActionBar(findViewById(R.id.testToolbar))
-        supportActionBar!!.setDisplayHomeAsUpEnabled(true)
 
-
-        Log.d("DEBUG", intent.getSerializableExtra("USER").toString())
-
+        initToolbar()
+        initDAO()
         initButtons()
         initProgressBar()
 
-        AlertDialogHelper.showAlertDialog(this, instructionMessage, "Instruction")
+        setUser()
+        showInstruction()
+    }
+
+    private fun initToolbar() {
+        setSupportActionBar(findViewById(R.id.testToolbar))
+        supportActionBar!!.setDisplayHomeAsUpEnabled(true)
+    }
+
+    private fun initDAO() {
+        attemptDao = DatabaseFactory.obtainDatabase(applicationContext)!!.attemptDao()
     }
 
     private fun initButtons() {
@@ -58,35 +70,49 @@ class TestActivity : AppCompatActivity() {
 
     private fun initProgressBar() {
         progressBar = findViewById(R.id.progressBar)
-        progressBar.max = 30000;
-        progressBar.progress = 30000;
+        progressBar.max = 30000
+        progressBar.progress = 30000
+    }
+
+    private fun setUser() {
+        user = intent.getSerializableExtra("USER") as User
+        Log.d("DEBUG", user.toString())
+    }
+
+    private fun showInstruction() {
+        AlertDialogHelper.showAlertDialog(this, instructionMessage, "Instruction")
     }
 
     private fun handleBottomButtonClick() {
-        if(!isTestStarted) {
-            startTest();
+        if (!isTestStarted) {
+            startTest()
         }
 
         findViewById<Button>(R.id.topButton).isEnabled = true
         findViewById<Button>(R.id.bottomButton).isEnabled = false
 
-        clickCounter++;
+        clickCounter++
     }
 
     private fun handleTopButtonClick() {
-        if(!isTestStarted) {
-            startTest();
+        if (!isTestStarted) {
+            startTest()
         }
 
         findViewById<Button>(R.id.topButton).isEnabled = false
         findViewById<Button>(R.id.bottomButton).isEnabled = true
 
-        clickCounter++;
+        clickCounter++
     }
 
     private fun startTest() {
         isTestStarted = true
         ToastHelper.showShortToast(this, "Test started!")
+
+        startCountdown()
+    }
+
+    private fun startCountdown() {
         object : CountDownTimer(testDurationInMillis, 1000) {
             override fun onTick(millisUntilFinished: Long) {
                 progressBar.progress = millisUntilFinished.toInt()
@@ -94,7 +120,11 @@ class TestActivity : AppCompatActivity() {
 
             override fun onFinish() {
                 progressBar.progress = 0
+
                 disableButtons()
+
+                addAttemptToDataBase()
+
                 showResult()
                 redirectAfterDelay()
             }
@@ -106,24 +136,30 @@ class TestActivity : AppCompatActivity() {
         ToastHelper.showLongToast(this, "Result: $clickCounter")
     }
 
-    private fun redirectAfterDelay() {
+    private fun addAttemptToDataBase() {
         val newAttempt = obtainNewAttempt()
 
+        GlobalScope.launch(Dispatchers.IO) {
+            attemptDao.insertAttempt(newAttempt)
+        }
+    }
+
+    private fun redirectAfterDelay() {
         Timer("ResultDelay", false).schedule(object : TimerTask() {
             override fun run() {
-                launchResultsActivity(newAttempt)
+                launchResultsActivity()
             }
 
         }, 2000)
     }
 
     private fun obtainNewAttempt(): Attempt {
-        return Attempt(LocalDateTime.now(), clickCounter)
+        return Attempt(LocalDateTime.now(), clickCounter, user.userId)
     }
 
-    private fun launchResultsActivity(newAttempt: Attempt) {
+    private fun launchResultsActivity() {
         val intent = Intent(this, ResultActivity::class.java).apply {
-            putExtra("NEW_ATTEMPT", newAttempt)
+            putExtra("USER", user)
         }
         startActivity(intent)
     }
