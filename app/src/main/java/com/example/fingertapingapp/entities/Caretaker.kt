@@ -9,6 +9,5 @@ import java.io.Serializable
 data class Caretaker(
     @PrimaryKey(autoGenerate = true) val caretakerId: Long,
     @ColumnInfo(name = "login") val login: String,
-    @ColumnInfo(name = "password") val password: String,
-    @ColumnInfo(name = "assignedUserId") val assignedUserId: Long
+    @ColumnInfo(name = "password") val password: String
 ) : Serializable

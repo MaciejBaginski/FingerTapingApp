@@ -4,6 +4,6 @@
 
     <item
         android:id="@+id/logAsCaretaker"
-        android:title="Log as caretaker"
+        android:title="@string/log_as_caretaker"
         app:showAsAction="never"/>
 </menu>

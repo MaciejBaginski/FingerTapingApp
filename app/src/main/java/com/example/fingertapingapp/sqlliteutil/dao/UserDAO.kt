@@ -13,6 +13,10 @@ interface UserDAO {
     @Transaction
     fun getUserWithAttempts(userId: Long): UserWithAttempts?
 
+    @Query("SELECT * FROM user")
+    @Transaction
+    fun getUsersWithAttempts(): List<UserWithAttempts>?
+
     @Query("SELECT * FROM user WHERE age = :age AND name = :name AND surname = :surname")
     fun getUser(name: String, surname: String, age: Int): User?
 
